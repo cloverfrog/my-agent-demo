@@ -22,3 +22,12 @@ def run_tests() -> str:
     )
 
     return result.stdout + result.stderr
+
+def search_knowledge(query: str, top_k: int = 3) -> list:
+    from rag import retrieve
+
+    results = retrieve(query, top_k=top_k)
+    return "\n\n".join(
+            f"[来源: {r['source']}]\n{r['text']}"
+            for r in results
+        )

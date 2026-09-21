@@ -71,7 +71,7 @@ def retrieve(query: str, top_k: int = 3):
 
     return results
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 #     results = retrieve("RAG 和普通调用大模型有什么区别？")
 
 #     for result in results:
@@ -80,36 +80,36 @@ def retrieve(query: str, top_k: int = 3):
 #         print(result["text"])
 #         print()
 
-from openai import OpenAI
-import os
+    from openai import OpenAI
+    import os
 
-client = OpenAI(
-    api_key=os.environ["DEEPSEEK_API_KEY"],
-    base_url="https://api.deepseek.com",
-)
-
-
-def ask(question: str):
-    results = retrieve(question)
-
-    context = "\n\n".join(
-        f"[来源: {r['source']}]\n{r['text']}"
-        for r in results
+    client = OpenAI(
+        api_key=os.environ["DEEPSEEK_API_KEY"],
+        base_url="https://api.deepseek.com",
     )
 
-    response = client.responses.create(
-        model="deepseek-flash",
-        input=f"""
-请仅根据下面提供的资料回答问题。
 
-资料：
-{context}
+    def ask(question: str):
+        results = retrieve(question)
 
-问题：
-{question}
-"""
-    )
+        context = "\n\n".join(
+            f"[来源: {r['source']}]\n{r['text']}"
+            for r in results
+        )
 
-    return response.output_text
+        response = client.responses.create(
+            model="deepseek-flash",
+            input=f"""
+    请仅根据下面提供的资料回答问题。
 
-print(ask("RAG 和普通调用大模型有什么区别？"))
+    资料：
+    {context}
+
+    问题：
+    {question}
+    """
+        )
+
+        return response.output_text
+
+    print(ask("RAG 和普通调用大模型有什么区别？"))

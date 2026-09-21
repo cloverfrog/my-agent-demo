@@ -76,6 +76,28 @@ TOOLS = [
         },
         "strict": True,
     },
+    {
+        "type": "function",
+        "name": "search_knowledge",
+        "description": "在知识库中搜索相关内容。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "搜索查询"
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "返回的结果数量，默认为 3",
+                    "default": 3
+                }
+            },
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    }
 ]
 MAX_STEPS = 10
 
