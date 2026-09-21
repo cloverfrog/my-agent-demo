@@ -2,7 +2,7 @@ import os
 import json
 from openai import OpenAI
 
-from tools import read_file, write_file, run_tests
+from tools import read_file, write_file, run_tests, search_knowledge
 
 client = OpenAI(
     api_key=os.environ.get("DEEPSEEK_API_KEY"),
@@ -10,23 +10,24 @@ client = OpenAI(
 )
 
 MODEL = "deepseek-flash"
-INSTRUCTIONS = """
-你是一个代码修复 Agent。
+# INSTRUCTIONS = """
+# 你是一个代码修复 Agent。
 
-你的目标是修复 target 项目，使所有 pytest 测试通过。
+# 你的目标是修复 target 项目，使所有 pytest 测试通过。
 
-项目包含：
-- calculator.py
-- test_calculator.py
+# 项目包含：
+# - calculator.py
+# - test_calculator.py
 
-你可以读取文件、修改文件以及运行测试。
+# 你可以读取文件、修改文件以及运行测试。
 
-规则：
-1. 在不了解代码时，先读取相关文件。
-2. 修改代码后必须运行测试验证。
-3. 只有测试全部通过后，任务才算成功。
-4. 不要修改测试来让错误代码通过测试。
-"""
+# 规则：
+# 1. 在不了解代码时，先读取相关文件。
+# 2. 修改代码后必须运行测试验证。
+# 3. 只有测试全部通过后，任务才算成功。
+# 4. 不要修改测试来让错误代码通过测试。
+# """
+INSTRUCTIONS = "你是一个问答 Agent。请根据提供的资料回答用户的问题。"
 TOOLS = [
     {
         "type": "function",
@@ -111,12 +112,17 @@ def execute_tool(name: str, arguments: dict) -> str:
     if name == "run_tests":
         return run_tests()
 
+    if name == "search_knowledge":
+        return search_knowledge(**arguments)
+
     raise ValueError(f"Unknown tool: {name}")
+
+prompt = input("请输入问题：")
 
 context = [
     {
         "role": "user",
-        "content": "修复这个项目，使所有测试通过。"
+        "content": prompt
     }
 ]
 

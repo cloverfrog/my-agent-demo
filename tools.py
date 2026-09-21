@@ -23,7 +23,7 @@ def run_tests() -> str:
 
     return result.stdout + result.stderr
 
-def search_knowledge(query: str, top_k: int = 3) -> list:
+def search_knowledge(query: str, top_k: int = 3) -> str:
     from rag import retrieve
 
     results = retrieve(query, top_k=top_k)
