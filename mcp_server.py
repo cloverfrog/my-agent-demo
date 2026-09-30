@@ -17,6 +17,11 @@ def search_knowledge(query: str, top_k: int = 3) -> str:
         for r in results
     )
 
+@mcp.tool()
+def echo(message: str) -> tuple[str, int]:
+    """返回输入的消息。"""
+
+    return message, len(message)
 
 if __name__ == "__main__":
     mcp.run()
