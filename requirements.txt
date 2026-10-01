@@ -3,3 +3,4 @@ openai
 sentence_transformers
 torch
 langgraph
+langgraph-checkpoint-sqlite

@@ -9,9 +9,9 @@ from openai import AsyncOpenAI
 from mcp import Client, StdioServerParameters
 from mcp.types import TextContent
 from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 MODEL = "deepseek-flash"
-MAX_STEPS = 10
 INSTRUCTIONS = "你是一个问答 Agent。需要时请调用可用工具。"
 
 class AgentState(TypedDict):
@@ -135,7 +135,7 @@ builder.add_edge(
     "agent",
 )
 
-graph = builder.compile()
+# graph = builder.compile()
 
 async def main():
     global mcp_client, tools
@@ -156,21 +156,38 @@ async def main():
         for tool in tools:
             print("-", tool["name"])
 
-        prompt = input("\n请输入问题：")
+        async with AsyncSqliteSaver.from_conn_string(
+            "agent_checkpoints.db"
+        ) as checkpointer:
+            await checkpointer.setup()
+            
+            graph = builder.compile(checkpointer=checkpointer)
 
-        result = await graph.ainvoke({
-            "context": [
+            prompt = input("\n请输入问题：")
+
+            config = {
+                "configurable": {
+                    "thread_id": "demo-thread"
+                },
+                "recursion_limit": 10,
+            }
+
+            result = await graph.ainvoke(
                 {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            "pending_calls": [],
-            "final_answer": "",
-        })
+                    "context": [
+                        {
+                            "role": "user",
+                            "content": prompt,
+                        }
+                    ],
+                    "pending_calls": [],
+                    "final_answer": "",
+                },
+                config=config
+            )
 
-        print("\nAgent 最终回答：")
-        print(result["final_answer"])
+            print("\nAgent 最终回答：")
+            print(result["final_answer"])
 
 if __name__ == "__main__":
     anyio.run(main)
