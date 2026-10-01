@@ -10,6 +10,7 @@ from mcp import Client, StdioServerParameters
 from mcp.types import TextContent
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.types import interrupt
 
 MODEL = "deepseek-flash"
 INSTRUCTIONS = "你是一个问答 Agent。需要时请调用可用工具。"
@@ -18,6 +19,7 @@ class AgentState(TypedDict):
     context: Annotated[list[dict], operator.add]
     pending_calls: list[dict]
     final_answer: str
+    approved: bool | None
 
 mcp_client: Client
 tools: list[dict]
@@ -111,15 +113,34 @@ async def tool_node(state: AgentState):
         "pending_calls": [],
     }
 
+def approval_node(state: AgentState):
+    calls = state["pending_calls"]
+
+    decision = interrupt({
+        "question": "是否允许执行这些工具？",
+        "calls": calls,
+    })
+
+    return {
+        "approved": bool(decision)
+    }
+
+def after_approval(state: AgentState):
+    if state["approved"]:
+        return "tools"
+
+    return "agent"
+
 def should_continue(state: AgentState):
     if state["pending_calls"]:
-        return "tools"
+        return "approval"
 
     return END
 
 builder = StateGraph(AgentState)
 
 builder.add_node("agent", agent_node)
+builder.add_node("approval", approval_node)
 builder.add_node("tools", tool_node)
 
 builder.add_edge(START, "agent")
@@ -127,9 +148,14 @@ builder.add_edge(START, "agent")
 builder.add_conditional_edges(
     "agent",
     should_continue,
-    ["tools", END],
+    ["approval", END],
 )
 
+builder.add_conditional_edges(
+    "approval",
+    after_approval,
+    ["tools", "agent"],
+)
 builder.add_edge(
     "tools",
     "agent",
@@ -163,7 +189,7 @@ async def main():
             
             graph = builder.compile(checkpointer=checkpointer)
 
-            prompt = input("\n请输入问题：")
+            # prompt = input("\n请输入问题：")
 
             config = {
                 "configurable": {
@@ -172,19 +198,31 @@ async def main():
                 "recursion_limit": 10,
             }
 
+            # result = await graph.ainvoke(
+            #     {
+            #         "context": [
+            #             {
+            #                 "role": "user",
+            #                 "content": prompt,
+            #             }
+            #         ],
+            #         "pending_calls": [],
+            #         "final_answer": "",
+            #         "approved": None,
+            #     },
+            #     config=config
+            # )
+
+            from langgraph.types import Command
+
             result = await graph.ainvoke(
-                {
-                    "context": [
-                        {
-                            "role": "user",
-                            "content": prompt,
-                        }
-                    ],
-                    "pending_calls": [],
-                    "final_answer": "",
-                },
-                config=config
+                Command(resume=True),
+                config=config,
             )
+
+            if "__interrupt__" in result:
+                print("\nAgent 请求执行工具：")
+                print(result["__interrupt__"])
 
             print("\nAgent 最终回答：")
             print(result["final_answer"])
